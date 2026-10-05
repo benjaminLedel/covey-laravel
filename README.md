@@ -57,7 +57,7 @@ Every call writes one line to the application log (`COVEY_LOG_CHANNEL` to pick a
 
 ## Requirements
 
-PHP 8.2, Laravel 11 or 12. `psy/psysh` for tinker.
+PHP 8.2 or newer, Laravel 12. (Laravel 11 left security support in March 2026; every 11.x release carries open advisories that Composer refuses by default, so the package does not claim it.) `psy/psysh` for tinker.
 
 ## Licence
 
