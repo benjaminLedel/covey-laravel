@@ -1,12 +1,13 @@
 # covey-laravel
 
-A door into a Laravel application for a [covey](https://github.com/benjaminLedel/covey) agent. Installed with Composer, it exposes four endpoints under one prefix:
+A door into a Laravel application for a [covey](https://github.com/benjaminLedel/covey) agent. Installed with Composer, it exposes five endpoints under one prefix:
 
 | Endpoint | Token | What it does |
 |---|---|---|
 | `GET /covey/v1/health` | read | the probe: that the token works, as what, and whether tinker is on |
 | `GET /covey/v1/schema`, `GET /covey/v1/schema/{table}` | read | the tables and columns, minus the ones the application hides |
 | `POST /covey/v1/query` | read | **one** read-only SQL statement, rows capped, hidden columns stripped |
+| `GET /covey/v1/logs`, `POST /covey/v1/logs` | read | the log files, and a search through them: records from the end backwards, secrets redacted |
 | `POST /covey/v1/tinker` | **write** | PHP in the application's context, as `php artisan tinker` runs it |
 
 The line between the first three and the last one is the point of the package. **Reading and writing are different tokens**, and on the covey side they are different actions with different guard-rail subjects. An organisation can let an agent read everything and put an approval in front of `laravel:tinker`, or hand an agent the read token and nothing else. Nothing on the application side has to know which agent is which.
@@ -39,13 +40,26 @@ The token goes into covey as the agent's `laravel_token`; the hash stays with th
 - `ACCESS.md`: `- system: laravel scope: read` or `scope: read,write`;
 - the egress allowlist: the application's host.
 
-The actions an agent sees are `schema`, `columns`, `query` and, with the write scope, `tinker`. `tinker` carries the guard-rail subject `laravel:tinker`, so a rule such as *require approval for `laravel:tinker`* governs every change an agent makes through this door while the reads stay free.
+The actions an agent sees are `schema`, `columns`, `query`, `log_files`, `logs` and, with the write scope, `tinker`. Two of them carry a guard-rail subject of their own: `tinker` is `laravel:tinker`, so a rule such as *require approval for `laravel:tinker`* governs every change an agent makes through this door while the reads stay free; `logs` is `laravel:logs`, because a log holds what a column list does not — the request that failed, with whatever was in it — and an organisation may want an approval in front of that without touching schema or query.
 
 ## What the read side guarantees
 
 `query` refuses everything that is not a single `SELECT`, `WITH`, `SHOW`, `EXPLAIN` or `DESCRIBE` — checked on the statement text with comments and string literals stripped first, so a customer called *Update GmbH* is not a write and `-- drop` in a comment is not either. The statement then runs inside a transaction that is always rolled back, with a statement timeout where the driver has one, and the rows are capped (`COVEY_QUERY_MAX_ROWS`, default 200). Columns listed under `covey.hidden.columns` (password hashes, tokens, secrets by default) are stripped from every row and never shown in the schema; tables under `covey.hidden.tables` do not exist as far as the agent can tell.
 
 Point `COVEY_DB_CONNECTION` at a connection with a read-only database user and the database enforces the same rule a third time.
+
+## What the log side returns
+
+`POST /covey/v1/logs` reads the application log the way a person on call does: from the end, in **records** rather than lines — the `[timestamp] env.LEVEL: message` header plus the lines of its stack trace — and it stops as soon as it has what was asked for. The filters are `grep` (text, or a regex with `regex: true`; case-insensitive unless `case_sensitive: true`), `level` (a list) or `min_level`, `since`/`until` (absolute, or relative such as `-2 hours`), `tail` (records, default 50), `context` (neighbouring records around each match) and `lines` (lines kept per record — the head of the trace, where the frame that matters is). Without `file` a search runs through every file newest first; files modified before `since` are not opened.
+
+The scan is bounded three times: by `tail`, by `since`, and by `COVEY_LOGS_MAX_SCAN_BYTES` (default 32 MB from the end), and the answer says how far it got (`scanned_bytes`, `scan_complete`). Every line passes through the patterns under `covey.logs.redact` before it leaves — bearer tokens, password fields, app keys in a dumped request — and the package's own audit lines are left out. File names are bare names resolved against `covey.logs.paths` (default `storage/logs`); a path never crosses the wire in either direction. `COVEY_LOGS_ENABLED=false` removes the door.
+
+```env
+COVEY_LOGS_ENABLED=true           # default on; off removes the endpoints
+COVEY_LOGS_MAX_ENTRIES=200        # records per answer, at most
+COVEY_LOGS_MAX_ENTRY_LINES=40     # lines per record, at most
+COVEY_LOGS_MAX_SCAN_BYTES=33554432
+```
 
 ## What the write side does not pretend
 

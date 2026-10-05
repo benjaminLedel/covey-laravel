@@ -50,6 +50,42 @@ return [
         'timeout_seconds' => (int) env('COVEY_TINKER_TIMEOUT', 30),
     ],
 
+    // The application log, behind the read token. On the covey side this is
+    // its own guard-rail subject (laravel:logs): a log holds the request that
+    // failed, with whatever was in it, which is more than a column list does.
+    'logs' => [
+        // Off removes the door entirely, whatever token the agent holds.
+        'enabled' => (bool) env('COVEY_LOGS_ENABLED', true),
+
+        // Where to look. Null = the application's storage/logs. Only bare file
+        // names ever cross the wire; the directories stay here.
+        'paths' => null,
+        'glob' => env('COVEY_LOGS_GLOB', '*.log'),
+
+        // How much one call may return: records per answer, lines kept per
+        // record (the head of a stack trace, not its tail), and how many
+        // bytes a search may read from the end of the files before it stops
+        // and says so.
+        'max_entries' => (int) env('COVEY_LOGS_MAX_ENTRIES', 200),
+        'max_entry_lines' => (int) env('COVEY_LOGS_MAX_ENTRY_LINES', 40),
+        'max_scan_bytes' => (int) env('COVEY_LOGS_MAX_SCAN_BYTES', 32 * 1024 * 1024),
+
+        // Leave out the lines this package writes itself (see log_channel),
+        // so an agent does not read its own trail as the application's.
+        'hide_own' => true,
+
+        // Applied to every line before it leaves: pattern => replacement.
+        // What a dumped request carried — a bearer token, a password field,
+        // an app key — is not something an agent writes into a ticket.
+        'redact' => [
+            '/Bearer\s+[A-Za-z0-9\-._~+\/]+=*/i' => 'Bearer [redacted]',
+            // A quoted value runs to its closing quote, a bare one to the next
+            // separator — the (?(2)…|…) conditional picks which.
+            '/(["\']?(?:password|passwd|password_confirmation|secret|token|api_key|apikey|authorization)["\']?\s*(?:=>|[:=])\s*(["\'])?)(?(2)[^"\']*|[^"\',\s}\]]+)/i' => '$1[redacted]',
+            '/base64:[A-Za-z0-9+\/]{40,}={0,2}/' => '[redacted]',
+        ],
+    ],
+
     // Every call is written to this log channel with the ability used, the
     // statement or code, and how long it took. Null = the default channel.
     'log_channel' => env('COVEY_LOG_CHANNEL'),
