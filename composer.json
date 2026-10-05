@@ -1,10 +1,15 @@
 {
     "name": "benjaminledel/covey-laravel",
-    "description": "Give a covey agent a door into your Laravel application: schema and read-only queries behind a read token, tinker behind a write token, so writes can carry their own guard rails.",
+    "description": "Give a covey agent (covey.work) a door into your Laravel application: schema, read-only queries and the application log behind a read token, tinker behind a write token, so writes carry their own guard rails.",
     "type": "library",
     "license": "MIT",
-    "keywords": ["covey", "laravel", "agent", "tinker"],
-    "homepage": "https://github.com/benjaminLedel/covey-laravel",
+    "keywords": ["covey", "laravel", "agent", "ai-agent", "tinker", "logs", "support"],
+    "homepage": "https://covey.work",
+    "support": {
+        "docs": "https://covey.work/docs",
+        "source": "https://github.com/benjaminLedel/covey-laravel",
+        "issues": "https://github.com/benjaminLedel/covey-laravel/issues"
+    },
     "require": {
         "php": "^8.2",
         "illuminate/support": "^12.0",
