@@ -1,0 +1,37 @@
+{
+  "name": "laravel",
+  "label": "Laravel application",
+  "description": "A door into a Laravel application that has benjaminledel/covey-laravel installed: the schema and read-only SQL behind the read token, tinker (PHP in the application's context) behind the write token.",
+  "category": "dev",
+  "auth": { "header": "Authorization", "format": "Bearer {token}" },
+  "scopes": ["read", "write"],
+  "probe": { "path": "/covey/v1/health", "identity_field": "identity" },
+  "actions": {
+    "schema": {
+      "method": "GET",
+      "path": "/covey/v1/schema",
+      "scope": "read",
+      "doc": "the tables of the application's database (hidden tables left out); no params"
+    },
+    "columns": {
+      "method": "GET",
+      "path": "/covey/v1/schema/{table}",
+      "scope": "read",
+      "doc": "the columns of one table with type, nullable and default; params: table"
+    },
+    "query": {
+      "method": "POST",
+      "path": "/covey/v1/query",
+      "scope": "read",
+      "doc": "ONE read-only SQL statement (SELECT/WITH/SHOW/EXPLAIN), rows capped; params: sql, bindings (optional array for ? placeholders), limit (optional). Anything that writes is refused here — that is tinker."
+    },
+    "tinker": {
+      "method": "POST",
+      "path": "/covey/v1/tinker",
+      "scope": "write",
+      "subject": "laravel:tinker",
+      "doc": "run PHP in the application's context, as `php artisan tinker` would (Eloquent, facades, jobs); params: code. This CHANGES things: say in one line what and why before you call it, and never call it for something query can answer."
+    }
+  },
+  "prompt_doc": "This Laravel application is reachable through four actions. Read first: schema and columns tell you the tables, query runs one SELECT with a row cap and strips columns the application hides. tinker is the only way to change anything and is governed separately — an organisation may require an approval for it, and an agent that only holds the read token does not have it at all. Prefer query over tinker for every question; use tinker for a change you were asked to make, name the record you touch, and read it back afterwards."
+}
