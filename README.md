@@ -1,6 +1,11 @@
 # covey-laravel
 
-A door into a Laravel application for a [covey](https://github.com/benjaminLedel/covey) agent. Installed with Composer, it exposes five endpoints under one prefix:
+[![covey.work](https://img.shields.io/badge/website-covey.work-cc7a5b)](https://covey.work)
+[![Packagist](https://img.shields.io/packagist/v/benjaminledel/covey-laravel?color=1f883d)](https://packagist.org/packages/benjaminledel/covey-laravel)
+[![Tests](https://github.com/benjaminLedel/covey-laravel/actions/workflows/test.yml/badge.svg)](https://github.com/benjaminLedel/covey-laravel/actions/workflows/test.yml)
+[![Licence](https://img.shields.io/badge/licence-MIT-336791)](LICENSE)
+
+A door into a Laravel application for a [covey](https://covey.work) agent. covey runs AI agents like employees — each with its own sandbox, its own logins, a backlog and central guard rails ([covey.work](https://covey.work), [docs](https://covey.work/docs), [source](https://github.com/benjaminLedel/covey)). This package is what the agent reaches when one of its target systems is your Laravel application. Installed with Composer, it exposes five endpoints under one prefix:
 
 | Endpoint | Token | What it does |
 |---|---|---|
@@ -34,13 +39,13 @@ The token goes into covey as the agent's `laravel_token`; the hash stays with th
 
 ## On the covey side
 
-`covey/laravel.json` in this repository is a covey **manifest plugin**. Upload it in the store (Target systems → upload a plugin), or install it from the catalogue once it is listed there. Then, per agent:
+`covey/laravel.json` in this repository is a covey **manifest plugin** (how those work: [covey.work/docs/target-systems](https://covey.work/docs/target-systems)). Install it from the [plugin catalogue](https://github.com/benjaminLedel/covey-plugins) in the store (Target systems → Laravel application), or upload the file by hand. Then, per agent:
 
 - secrets `laravel_url` (the application's base URL, without the prefix) and `laravel_token` (a read or a write token);
 - `ACCESS.md`: `- system: laravel scope: read` or `scope: read,write`;
 - the egress allowlist: the application's host.
 
-The actions an agent sees are `schema`, `columns`, `query`, `log_files`, `logs` and, with the write scope, `tinker`. Two of them carry a guard-rail subject of their own: `tinker` is `laravel:tinker`, so a rule such as *require approval for `laravel:tinker`* governs every change an agent makes through this door while the reads stay free; `logs` is `laravel:logs`, because a log holds what a column list does not — the request that failed, with whatever was in it — and an organisation may want an approval in front of that without touching schema or query.
+The actions an agent sees are `schema`, `columns`, `query`, `log_files`, `logs` and, with the write scope, `tinker`. Two of them carry a [guard-rail](https://covey.work/docs/guard-rails) subject of their own: `tinker` is `laravel:tinker`, so a rule such as *require approval for `laravel:tinker`* governs every change an agent makes through this door while the reads stay free; `logs` is `laravel:logs`, because a log holds what a column list does not — the request that failed, with whatever was in it — and an organisation may want an approval in front of that without touching schema or query.
 
 ## What the read side guarantees
 
@@ -72,6 +77,10 @@ Every call writes one line to the application log (`COVEY_LOG_CHANNEL` to pick a
 ## Requirements
 
 PHP 8.2 or newer, Laravel 12. (Laravel 11 left security support in March 2026; every 11.x release carries open advisories that Composer refuses by default, so the package does not claim it.) `psy/psysh` for tinker.
+
+## About covey
+
+[covey](https://covey.work) is the IT and HR department for AI agents: an identity, an isolated sandbox, brokered access, a backlog and a place in the org chart for every agent, with governance in one place. It is open source ([github.com/benjaminLedel/covey](https://github.com/benjaminLedel/covey)) and there is a hosted beta at [app.covey.work](https://app.covey.work). This package is one of its target-system plugins; the others, and how to write your own, are in the [docs](https://covey.work/docs).
 
 ## Licence
 

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.1 — 2026-10-05
+
+- Package metadata: homepage covey.work, docs and issues under `support`, the description names the log endpoint. No code change.
+
 ## 0.1.0 — 2026-10-05
 
 - First cut: `health`, `schema`, `schema/{table}`, `query` behind the read token; `tinker` behind the write token and `COVEY_TINKER_ENABLED`; `covey:token` command; the covey manifest `covey/laravel.json` with the subject `laravel:tinker` for writes.
