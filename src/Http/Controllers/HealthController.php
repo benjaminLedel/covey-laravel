@@ -21,6 +21,7 @@ class HealthController
             'environment' => app()->environment(),
             'ability' => $ability,
             'tinker_enabled' => (bool) config('covey.tinker.enabled'),
+            'logs_enabled' => (bool) config('covey.logs.enabled', true),
             'laravel' => app()->version(),
         ]);
     }
