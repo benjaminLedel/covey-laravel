@@ -24,6 +24,9 @@ class TinkerController
         if (! config('covey.tinker.enabled')) {
             return response()->json(['error' => 'tinker is switched off in this application (COVEY_TINKER_ENABLED)'], 403);
         }
+        if (! class_exists(Shell::class)) {
+            return response()->json(['error' => 'tinker is switched on but psy/psysh is not installed (composer require laravel/tinker)'], 501);
+        }
         $code = (string) $request->input('code', '');
         if (trim($code) === '') {
             return response()->json(['error' => 'code is empty'], 422);
@@ -43,13 +46,19 @@ class TinkerController
         // written through either lands in the buffer, nothing on stdout.
         $config->setOutput($output);
         $shell = new Shell($config);
-        $shell->addInput($code);
+        $shell->setOutput($output);
 
         $timeout = max(1, (int) config('covey.tinker.timeout_seconds', 30));
         set_time_limit($timeout);
         $error = null;
         try {
-            $shell->run(null, $output);
+            // execute(), not run(): run() reads further input once the code is
+            // used up, and where the process has a standard input — the
+            // php artisan serve terminal, a worker started from a shell — the
+            // request would wait on it. execute() runs the code and returns,
+            // as `artisan tinker --execute` does; the value of the last
+            // expression is printed the way the shell prints it.
+            $shell->writeReturnValue($shell->execute($code, true));
         } catch (Throwable $e) {
             $error = get_class($e).': '.$e->getMessage();
         }

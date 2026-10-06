@@ -78,7 +78,15 @@ class EndpointsTest extends TestCase
         $this->assertSame('active', $this->app['db']->table('customers')->where('name', 'Ben')->value('status'));
     }
 
-    public function test_tinker_can_be_switched_off(): void
+    public function test_tinker_reports_an_error_in_the_code(): void
+    {
+        $r = $this->as(self::WRITE)->postJson('/covey/v1/tinker', ['code' => "throw new RuntimeException('nope');"])->assertStatus(422);
+        $this->assertStringContainsString('nope', $r->json('error'));
+        $r = $this->as(self::WRITE)->postJson('/covey/v1/tinker', ['code' => 'DB::table('])->assertStatus(422);
+        $this->assertNotNull($r->json('error'));
+    }
+
+    public function test_tinker_switched_off_after_the_routes_loaded_still_refuses(): void
     {
         config(['covey.tinker.enabled' => false]);
         $this->as(self::WRITE)->postJson('/covey/v1/tinker', ['code' => 'return 1;'])->assertStatus(403);
