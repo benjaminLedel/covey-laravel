@@ -4,13 +4,14 @@ namespace Covey\Laravel\Http\Controllers;
 
 use Covey\Laravel\Audit;
 use Covey\Laravel\ReadOnlySql;
+use Covey\Laravel\Tables;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
-// A SELECT, and nothing else, with the row count capped and the hidden
-// columns stripped from the result. The statement is checked twice: by
+// A SELECT, and nothing else, on no hidden table, with the row count capped
+// and the hidden columns stripped from the result. The statement is checked twice: by
 // ReadOnlySql before it runs, and by a transaction that is rolled back
 // afterwards — so even a statement the checker misjudged leaves nothing
 // behind. Point covey.connection at a read-only database user and it is
@@ -30,6 +31,10 @@ class QueryController
         }
 
         $connection = DB::connection(config('covey.connection') ?: null);
+        $table = Tables::for($connection)->hiddenIn($sql);
+        if ($table !== null) {
+            return response()->json(['error' => "the statement names \"$table\", a table this application hides from agents (covey.hidden.tables)"], 422);
+        }
         $hidden = array_map('strtolower', (array) config('covey.hidden.columns', []));
         $rows = [];
         $truncated = false;

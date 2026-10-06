@@ -49,9 +49,11 @@ The actions an agent sees are `schema`, `columns`, `query`, `log_files`, `logs` 
 
 ## What the read side guarantees
 
-`query` refuses everything that is not a single `SELECT`, `WITH`, `SHOW`, `EXPLAIN` or `DESCRIBE` — checked on the statement text with comments and string literals stripped first, so a customer called *Update GmbH* is not a write and `-- drop` in a comment is not either. The statement then runs inside a transaction that is always rolled back, with a statement timeout where the driver has one, and the rows are capped (`COVEY_QUERY_MAX_ROWS`, default 200). Columns listed under `covey.hidden.columns` (password hashes, tokens, secrets by default) are stripped from every row and never shown in the schema; tables under `covey.hidden.tables` do not exist as far as the agent can tell.
+`query` refuses everything that is not a single `SELECT`, `WITH`, `SHOW`, `EXPLAIN` or `DESCRIBE` — checked on the statement text with comments and string literals stripped first, so a customer called *Update GmbH* is not a write and `-- drop` in a comment is not either. The statement then runs inside a transaction that is always rolled back, with a statement timeout where the driver has one, and the rows are capped (`COVEY_QUERY_MAX_ROWS`, default 200). Columns listed under `covey.hidden.columns` (password hashes, tokens, secrets by default) are stripped from every row and never shown in the schema. Tables under `covey.hidden.tables` are left out of the schema, and a statement that names one is refused — with or without the connection's table prefix, quoted, schema-qualified or inside a string literal; Postgres functions that run a statement assembled from strings (`query_to_xml`, `dblink`) are refused outright.
 
-Point `COVEY_DB_CONNECTION` at a connection with a read-only database user and the database enforces the same rule a third time.
+The schema lists tables by the name the database knows, prefix included, because that is what a statement has to use; `schema/{table}` takes that name or the one without the prefix.
+
+Both are checks on the statement text. Point `COVEY_DB_CONNECTION` at a connection with a read-only database user that has no grants on the hidden tables, and the database enforces the same rules a third time — that is the guarantee; the text checks are what spare the agent the round trip.
 
 ## What the log side returns
 

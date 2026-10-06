@@ -20,13 +20,18 @@ class ReadOnlySql
         'into', // SELECT … INTO OUTFILE / INTO new_table
         'for',  // SELECT … FOR UPDATE / FOR SHARE
         'pg_sleep', 'sleep', 'benchmark', 'pg_read_file', 'pg_terminate_backend', 'lo_import', 'lo_export',
+        // Postgres functions that run a statement handed to them as a string.
+        // What that statement reads or writes is assembled at run time
+        // ('sess' || 'ions'), out of reach of any test on the text.
+        'query_to_xml', 'query_to_xmlschema', 'query_to_xml_and_xmlschema',
+        'dblink', 'dblink_exec', 'dblink_open', 'dblink_fetch', 'dblink_send_query', 'dblink_connect',
     ];
 
     // check returns null when the statement may run, or the sentence that says
     // why not.
     public static function check(string $sql): ?string
     {
-        $stripped = self::stripCommentsAndStrings($sql);
+        $stripped = self::strip($sql, false);
         $trimmed = trim($stripped);
         if ($trimmed === '') {
             return 'sql is empty';
@@ -48,12 +53,20 @@ class ReadOnlySql
         return null;
     }
 
+    // The statement with its comments removed and its string literals and
+    // quoted identifiers kept — what the test for hidden tables reads.
+    public static function withoutComments(string $sql): string
+    {
+        return self::strip($sql, true);
+    }
+
     // Comments and string literals are replaced by spaces before the word test:
     // a customer named "Update GmbH" in a WHERE clause is not a write, and
     // "-- drop" in a comment is not either. Conservative with what it cannot
     // parse: an unterminated string or comment leaves the rest in place, so
-    // the word test still sees it.
-    private static function stripCommentsAndStrings(string $sql): string
+    // the word test still sees it. With $keepStrings the literals stay as they
+    // are and only the comments go.
+    private static function strip(string $sql, bool $keepStrings): string
     {
         $out = '';
         $n = strlen($sql);
@@ -101,7 +114,11 @@ class ReadOnlySql
                     }
                     $j++;
                 }
-                $out .= $c === '`' ? ' `x` ' : " '' ";
+                if ($keepStrings) {
+                    $out .= substr($sql, $i, $j + 1 - $i);
+                } else {
+                    $out .= $c === '`' ? ' `x` ' : " '' ";
+                }
                 $i = $j + 1;
                 continue;
             }
