@@ -38,6 +38,9 @@ class ReadOnlySqlTest extends TestCase
             [''],
             ['   ;  '],
             ["SELECT 1 /* unterminated\nUPDATE customers SET name = 'x'"],
+            // A statement assembled from strings at run time.
+            ["SELECT query_to_xml('select * from sess' || 'ions', true, false, '')"],
+            ["SELECT * FROM dblink('dbname=app', 'select 1') AS t(x int)"],
         ];
     }
 

@@ -23,19 +23,33 @@ The line between the first three and the last one is the point of the package. *
 composer require benjaminledel/covey-laravel
 php artisan vendor:publish --tag=covey-config   # optional
 php artisan covey:token read
-php artisan covey:token write                   # only if agents may change things
 ```
 
-Each `covey:token` call prints a token **once** and the hash to configure:
+`covey:token` prints a token **once** and the hash to configure:
 
 ```env
 COVEY_READ_TOKEN_HASH=…
-COVEY_WRITE_TOKEN_HASH=…
-COVEY_TINKER_ENABLED=true        # off by default; the write token alone is not enough
 COVEY_DB_CONNECTION=readonly     # optional: a read-only user or a replica for the read endpoints
 ```
 
 The token goes into covey as the agent's `laravel_token`; the hash stays with the application. Neither is written anywhere by the command.
+
+This installs the read side only. Until the write side is switched on, the `tinker` route does not exist and nothing in the package runs code.
+
+### Switching on the write side
+
+A decision for a person, not a step of the installation: it lets an agent run PHP in the application. It takes three things together:
+
+```bash
+php artisan covey:token write    # a second token, kept apart from the read token
+```
+
+```env
+COVEY_WRITE_TOKEN_HASH=…
+COVEY_TINKER_ENABLED=true        # registers the tinker route; the write token alone is not enough
+```
+
+and, on the covey side, a guard rail in front of `laravel:tinker` if a person is to approve each call. Tinker needs `psy/psysh`, which a Laravel application usually has through `laravel/tinker`. With a cached route list, run `php artisan route:cache` again after changing `COVEY_TINKER_ENABLED`.
 
 ## On the covey side
 
@@ -49,9 +63,11 @@ The actions an agent sees are `schema`, `columns`, `query`, `log_files`, `logs` 
 
 ## What the read side guarantees
 
-`query` refuses everything that is not a single `SELECT`, `WITH`, `SHOW`, `EXPLAIN` or `DESCRIBE` — checked on the statement text with comments and string literals stripped first, so a customer called *Update GmbH* is not a write and `-- drop` in a comment is not either. The statement then runs inside a transaction that is always rolled back, with a statement timeout where the driver has one, and the rows are capped (`COVEY_QUERY_MAX_ROWS`, default 200). Columns listed under `covey.hidden.columns` (password hashes, tokens, secrets by default) are stripped from every row and never shown in the schema; tables under `covey.hidden.tables` do not exist as far as the agent can tell.
+`query` refuses everything that is not a single `SELECT`, `WITH`, `SHOW`, `EXPLAIN` or `DESCRIBE` — checked on the statement text with comments and string literals stripped first, so a customer called *Update GmbH* is not a write and `-- drop` in a comment is not either. The statement then runs inside a transaction that is always rolled back, with a statement timeout where the driver has one, and the rows are capped (`COVEY_QUERY_MAX_ROWS`, default 200). Columns listed under `covey.hidden.columns` (password hashes, tokens, secrets by default) are stripped from every row and never shown in the schema. Tables under `covey.hidden.tables` are left out of the schema, and a statement that names one is refused — with or without the connection's table prefix, quoted, schema-qualified or inside a string literal; Postgres functions that run a statement assembled from strings (`query_to_xml`, `dblink`) are refused outright.
 
-Point `COVEY_DB_CONNECTION` at a connection with a read-only database user and the database enforces the same rule a third time.
+The schema lists tables by the name the database knows, prefix included, because that is what a statement has to use; `schema/{table}` takes that name or the one without the prefix.
+
+Both are checks on the statement text. Point `COVEY_DB_CONNECTION` at a connection with a read-only database user that has no grants on the hidden tables, and the database enforces the same rules a third time — that is the guarantee; the text checks are what spare the agent the round trip.
 
 ## What the log side returns
 
@@ -68,7 +84,7 @@ COVEY_LOGS_MAX_SCAN_BYTES=33554432
 
 ## What the write side does not pretend
 
-There is no way to let an agent run PHP in your application and keep it from changing things. `tinker` does not try. It is off until `COVEY_TINKER_ENABLED=true`, it needs the write token, and every call is logged with the code it ran. The place to decide *when* an agent may use it is covey's guard rails, in front of `laravel:tinker`, where the person who approves sees the code before it runs.
+There is no way to let an agent run PHP in your application and keep it from changing things. `tinker` does not try. Its route does not exist until `COVEY_TINKER_ENABLED=true`, it needs the write token, and every call is logged with the code it ran. The place to decide *when* an agent may use it is covey's guard rails, in front of `laravel:tinker`, where the person who approves sees the code before it runs.
 
 ## Logging
 
@@ -76,7 +92,9 @@ Every call writes one line to the application log (`COVEY_LOG_CHANNEL` to pick a
 
 ## Requirements
 
-PHP 8.2 or newer, Laravel 12. (Laravel 11 left security support in March 2026; every 11.x release carries open advisories that Composer refuses by default, so the package does not claim it.) `psy/psysh` for tinker.
+Laravel 10.34 or newer — 10, 11, 12 and 13 are tested — on any PHP version that release supports (8.1 at the lowest). 10.34 is the first release with `Schema::getTables()`, which the schema endpoint reads. `psy/psysh` 0.11 or 0.12 for tinker, if it is switched on.
+
+Laravel 10 and 11 no longer get security fixes, and every release of either carries open advisories, which Composer 2.9 and later refuse by default. That is the state of an application still on them, not something this package adds; it runs there so that such an application can have an agent too — including one that helps it move on.
 
 ## About covey
 
