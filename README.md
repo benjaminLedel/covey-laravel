@@ -76,7 +76,9 @@ Every call writes one line to the application log (`COVEY_LOG_CHANNEL` to pick a
 
 ## Requirements
 
-PHP 8.2 or newer, Laravel 12. (Laravel 11 left security support in March 2026; every 11.x release carries open advisories that Composer refuses by default, so the package does not claim it.) `psy/psysh` for tinker.
+Laravel 10.34 or newer — 10, 11, 12 and 13 are tested — on any PHP version that release supports (8.1 at the lowest). 10.34 is the first release with `Schema::getTables()`, which the schema endpoint reads. `psy/psysh` 0.11 or 0.12 for tinker.
+
+Laravel 10 and 11 no longer get security fixes, and every release of either carries open advisories, which Composer 2.9 and later refuse by default. That is the state of an application still on them, not something this package adds; it runs there so that such an application can have an agent too — including one that helps it move on.
 
 ## About covey
 
